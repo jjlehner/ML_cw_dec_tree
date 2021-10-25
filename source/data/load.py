@@ -9,7 +9,7 @@ def _load_data_set(dataset_name: str) -> numpy.ndarray:
     ---------
     dataset_name: str
         name of the file to load
-    
+
     Returns
     -------
     output: numpy.ndarray
@@ -27,7 +27,7 @@ def load_clean() -> numpy.ndarray:
     Returns
     -------
     clean_data: numpy.ndarray
-        the clean data set 
+        the clean data set
     """
 
     return _load_data_set('clean_dataset.txt')
@@ -39,6 +39,6 @@ def load_noisy() -> numpy.ndarray:
     Returns
     -------
     noisy_data: numpy.ndarray
-        the noisy data set 
+        the noisy data set
     """
     return _load_data_set('noisy_dataset.txt')

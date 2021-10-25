@@ -9,7 +9,7 @@ def labels(dataset: numpy.ndarray) -> typing.List:
     ---------
     dataset: numpy.ndarray
         the dataset to read the labels from
-    
+
     Returns
     -------
     labels: typing.List
