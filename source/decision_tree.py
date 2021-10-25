@@ -12,12 +12,12 @@ class ClassifierNode:
         # Initialize branches, label
         self.lower_branch = None
         self.upper_branch = None
-        self.label = None
 
         self.depth: int = depth
         self.leaf = False
         self.split_value = 0
         self.column = 0
+        self.label = 0
 
         # Evaluate label and unique values in data set
         label, unique_counts = numpy.unique(dataset[:, -1], return_counts=True)
@@ -26,11 +26,12 @@ class ClassifierNode:
         # If only one sample present, flag node as leaf
         if label_count == 1:
             self.leaf = True
-            self.label = label
+            self.label = float(label[0])
 
         # Otherwise, split the data set and create two sub-branches
         else:
             self.split_value, self.column = self.find_split(dataset)
+            self.label = self.split_value
 
             lower_dataset = dataset[dataset[:, self.column] < self.split_value]
             upper_dataset = dataset[dataset[:, self.column] > self.split_value]
