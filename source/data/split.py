@@ -13,7 +13,7 @@ def split(dataset: numpy.ndarray, split: float) \
         the dataset to split
     split: float
         the point to split about
-    
+
     Returns
     -------
     sets: typing.Tuple[numpy.ndarray, numpy.ndarray]
