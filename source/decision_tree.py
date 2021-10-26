@@ -18,6 +18,7 @@ class ClassifierNode:
         self.split_value = 0
         self.column = 0
         self.label = 0
+        self.width = 0
 
         # Evaluate label and unique values in data set
         label, unique_counts = numpy.unique(dataset[:, -1], return_counts=True)
@@ -38,6 +39,11 @@ class ClassifierNode:
 
             self.lower_branch = ClassifierNode(lower_dataset, depth + 1)
             self.upper_branch = ClassifierNode(upper_dataset, depth + 1)
+
+            NODE_WIDTH = 10
+            self.width = NODE_WIDTH
+            self.width += self.lower_branch.width
+            self.width += self.upper_branch.width
 
     def predict_row(self, dataset: numpy.ndarray) -> numpy.ndarray:
         """ Predict the value of the first row in a dataset
@@ -167,3 +173,47 @@ class ClassifierNode:
 
         # Return the best split, column values
         return (best_split, best_column)
+
+    def draw_segments(self,
+            lower: bool,
+            parent_origin: typing.Tuple[int, int]) -> List:
+
+        segments = []
+
+        # Draw a segment connecting this node to its parent
+        if parent_origin:
+            X_OFFSET = 10
+            Y_OFFSET = 10
+
+            origin = parent_origin
+            sign = -1 if lower else 1
+            origin[0] += (self.width + X_OFFSET) / 2 * sign
+            origin[1] += Y_OFFSET
+
+            segments.append([parent_origin, origin])
+
+        # Draw a leaf label
+        if self.leaf:
+            pass
+
+        # Draw child nodes, and a value label
+        else:
+            lower_segments = self.lower_branch.draw_segments(True,
+                    lower_origin)
+            upper_segments = self.upper_branch.draw_segments(False,
+                    upper_origin)
+
+            segments.extend(lower_segments)
+            segments.extend(upper_segments)
+
+        return segments
+
+    def draw(self):
+        segments = draw_segments()
+        lines = matplotlib.collections.LineCollection(segments)
+
+        figure, axes = matplotlib.pyplot.subplots()
+        axes.add_collection(lines)
+        matplotlib.pyplot.show()
+
+        pass
