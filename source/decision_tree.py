@@ -5,6 +5,9 @@ import numpy
 import sys
 
 from matplotlib.collections import LineCollection
+from matplotlib.textpath import TextPath
+from matplotlib.path import Path
+from matplotlib import patches
 from matplotlib import pyplot
 
 
@@ -31,7 +34,7 @@ class ClassifierNode:
         # If only one sample present, flag node as leaf
         if label_count == 1:
             self.leaf = True
-            self.width = 1
+            self.width = 10
             self.label = float(label[0])
 
         # Otherwise, split the data set and create two sub-branches
@@ -177,7 +180,7 @@ class ClassifierNode:
         # Return the best split, column values
         return (best_split, best_column)
 
-    def draw_segments(self, origin: typing.List) -> List:
+    def draw_segments(self, origin: typing.List) -> typing.List:
         """ Evaluate segments of a node and its children
 
         Arguments
@@ -191,43 +194,113 @@ class ClassifierNode:
             the line segments comprising the node and its children
         """
 
+        def draw_text_box(origin: typing.List, text: str):
+            path = TextPath((0, 0), text, size=1)
+
+            # Evaluate the text's bounding box
+            bottom_left = numpy.amin(numpy.array(path.vertices), axis=0)
+            top_right = numpy.amax(numpy.array(path.vertices), axis=0)
+
+            # Calculate the text's size & scale
+            size = [0, 1.5]
+            scale = [0, 0]
+            scale[0] = (top_right[0] - bottom_left[0])
+            scale[1] = (top_right[1] - bottom_left[1])
+            size[0] = size[1] / scale[1] * scale[0]
+
+            vertices = []
+            for vertex in path.vertices:
+
+                # Calculate the text's scaled position
+                position = numpy.multiply(vertex, size)
+                position = numpy.divide(position, scale)
+                position = numpy.add(position, origin)
+
+                # Centre the text about the origin
+                offset = numpy.divide(size, [2, 2])
+                position = numpy.subtract(position, offset)
+
+                vertices.append(position)
+
+            vertices = numpy.array(vertices)
+
+            box_size = size.copy()
+            box_size = numpy.add(box_size, 2)
+
+            box_origin = origin
+
+            offset = numpy.divide(box_size, [2, 2])
+            box_origin = numpy.subtract(box_origin, offset)
+            box = patches.Rectangle(box_origin,
+                    box_size[0],
+                    box_size[1],
+                    fill=True,
+                    color=[0, 0, 0])
+
+            # Draw the character on the
+            path = Path(vertices, path.codes)
+            patch = patches.PathPatch(path, color=[1, 1, 1], lw=0, zorder=10)
+
+            return (box, patch)
+
+        labels = []
         segments = []
 
+        label = None
         if self.leaf:
-            pass
+            label = draw_text_box(origin, f'{self.label}')
+            x_origin = origin[0] - 2.5
+            y_origin = origin[1] - 1.25
 
         else:
+            label = draw_text_box(origin, f'< {self.label} ≤')
+            x_origin = origin[0] - 2.5
+            y_origin = origin[1] - 1.25
+
             lower_width = self.lower_branch.width
             upper_width = self.upper_branch.width
 
             lower_origin = origin.copy()
             lower_origin[0] += (lower_width - self.width) / 2
-            lower_origin[1] -= 1
+            lower_origin[1] -= 10
 
             upper_origin = origin.copy()
             upper_origin[0] += (self.width - upper_width) / 2
-            upper_origin[1] -= 1
+            upper_origin[1] -= 10
 
             segments.append([origin, lower_origin])
             segments.append([origin, upper_origin])
 
-            lower_segments = self.lower_branch.draw_segments(lower_origin)
-            upper_segments = self.upper_branch.draw_segments(upper_origin)
+            lower_segments, lower_labels = self.lower_branch.draw_segments(lower_origin)
+            upper_segments, upper_labels = self.upper_branch.draw_segments(upper_origin)
 
             segments.extend(lower_segments)
             segments.extend(upper_segments)
 
-        return segments
+            labels.extend(lower_labels)
+            labels.extend(upper_labels)
+
+        labels.append(label)
+
+        return segments, labels
 
     def draw(self):
         """ Plot a node and its children
         """
 
-        segments = self.draw_segments([0, 0])
-        lines = LineCollection(segments, linewidths=1)
 
         figure, axes = pyplot.subplots()
+
+        segments, labels = self.draw_segments([0, 0])
+        lines = LineCollection(segments, linewidths=1, color=[0, 0, 0])
         axes.add_collection(lines)
+
+        for label in labels:
+            axes.add_patch(label[0])
+            axes.add_patch(label[1])
+
         axes.autoscale_view(True, True, True)
 
+        pyplot.axis('equal')
+        pyplot.axis('off')
         pyplot.show()
