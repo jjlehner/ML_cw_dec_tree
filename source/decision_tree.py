@@ -4,6 +4,9 @@ import typing
 import numpy
 import sys
 
+from matplotlib.collections import LineCollection
+from matplotlib import pyplot
+
 
 class ClassifierNode:
 
@@ -13,6 +16,7 @@ class ClassifierNode:
         self.lower_branch = None
         self.upper_branch = None
 
+        # Initialize meta-information
         self.depth: int = depth
         self.leaf = False
         self.split_value = 0
@@ -27,6 +31,7 @@ class ClassifierNode:
         # If only one sample present, flag node as leaf
         if label_count == 1:
             self.leaf = True
+            self.width = 1
             self.label = float(label[0])
 
         # Otherwise, split the data set and create two sub-branches
@@ -40,8 +45,6 @@ class ClassifierNode:
             self.lower_branch = ClassifierNode(lower_dataset, depth + 1)
             self.upper_branch = ClassifierNode(upper_dataset, depth + 1)
 
-            NODE_WIDTH = 10
-            self.width = NODE_WIDTH
             self.width += self.lower_branch.width
             self.width += self.upper_branch.width
 
@@ -174,34 +177,42 @@ class ClassifierNode:
         # Return the best split, column values
         return (best_split, best_column)
 
-    def draw_segments(self,
-            lower: bool,
-            parent_origin: typing.Tuple[int, int]) -> List:
+    def draw_segments(self, origin: typing.List) -> List:
+        """ Evaluate segments of a node and its children
+
+        Arguments
+        ---------
+        origin: typing.List
+            the origin of the node
+
+        Returns
+        -------
+        segments: List
+            the line segments comprising the node and its children
+        """
 
         segments = []
 
-        # Draw a segment connecting this node to its parent
-        if parent_origin:
-            X_OFFSET = 10
-            Y_OFFSET = 10
-
-            origin = parent_origin
-            sign = -1 if lower else 1
-            origin[0] += (self.width + X_OFFSET) / 2 * sign
-            origin[1] += Y_OFFSET
-
-            segments.append([parent_origin, origin])
-
-        # Draw a leaf label
         if self.leaf:
             pass
 
-        # Draw child nodes, and a value label
         else:
-            lower_segments = self.lower_branch.draw_segments(True,
-                    lower_origin)
-            upper_segments = self.upper_branch.draw_segments(False,
-                    upper_origin)
+            lower_width = self.lower_branch.width
+            upper_width = self.upper_branch.width
+
+            lower_origin = origin.copy()
+            lower_origin[0] += (lower_width - self.width) / 2
+            lower_origin[1] -= 1
+
+            upper_origin = origin.copy()
+            upper_origin[0] += (self.width - upper_width) / 2
+            upper_origin[1] -= 1
+
+            segments.append([origin, lower_origin])
+            segments.append([origin, upper_origin])
+
+            lower_segments = self.lower_branch.draw_segments(lower_origin)
+            upper_segments = self.upper_branch.draw_segments(upper_origin)
 
             segments.extend(lower_segments)
             segments.extend(upper_segments)
@@ -209,11 +220,14 @@ class ClassifierNode:
         return segments
 
     def draw(self):
-        segments = draw_segments()
-        lines = matplotlib.collections.LineCollection(segments)
+        """ Plot a node and its children
+        """
 
-        figure, axes = matplotlib.pyplot.subplots()
+        segments = self.draw_segments([0, 0])
+        lines = LineCollection(segments, linewidths=1)
+
+        figure, axes = pyplot.subplots()
         axes.add_collection(lines)
-        matplotlib.pyplot.show()
+        axes.autoscale_view(True, True, True)
 
-        pass
+        pyplot.show()
