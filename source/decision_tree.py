@@ -7,8 +7,6 @@ import data
 from data.split import split
 
 class DecisionTreeClassifierNode:
-    
-    
     def __init__(self, dataset: np.ndarray, depth: int):
         self.depth = depth
         [label, label_count] = np.unique(dataset[:,-1], return_counts= True)
@@ -40,7 +38,7 @@ class DecisionTreeClassifierNode:
         results = list()
         for r in x:
             results.append(self.predict_row(r))
-        return np.array(results)
+        return np.squeeze(np.array(results))
 
     def compute_entropy(self, dataset):
         [_, y] = np.unique(dataset[:,-1], return_counts=True)
@@ -55,7 +53,6 @@ class DecisionTreeClassifierNode:
         best_total_entropy = sys.float_info.max
         best_column = 0
         best_split_value = 0
-        best_i = -1
         for c in range(0,dataset.shape[1] - 1):
             sorted_dataset  = dataset[np.argsort(dataset[:,c])]
             for i in enumerate(sorted_dataset[:-1]):
@@ -70,7 +67,18 @@ class DecisionTreeClassifierNode:
                     best_total_entropy = total_entropy
                     best_column = c
                     best_split_value = (sorted_dataset[i[0], c] +  sorted_dataset[i[0]+1, c]) / 2.0
-                    best_i = i
         return (best_split_value, best_column)
+
+    def generate_confusion_matrix(self, test_set):
+        confusion_matrix = np.zeros((4,4))
+        predictions = self.predict(test_set[:, :-1])
+        actual = test_set[:, -1]
+        assert len(actual) == len(predictions)
+        for row, col in zip(actual,predictions):
+            confusion_matrix[int(row)-1,int(col)-1] += 1
+        return confusion_matrix
+        
+    
+   
+
       
-pass
