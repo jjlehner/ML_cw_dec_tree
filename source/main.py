@@ -19,12 +19,11 @@ def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False):
     # generate the folds
     if validation:
         for j in range(0, k):
-            # reserve 1 fold for the test dataset
-            #folds_test.append(dataset[0:fold_size])
             sub_dataset = dataset[fold_size:-1]
             for i in range(0, k-1):
+                # reserve 1 fold for the test dataset (single roll)
                 folds_test.append(dataset[0:fold_size])
-                # reserve 1 fold for the validation dataset
+                # reserve 1 fold for the validation dataset (double roll)
                 folds_validation.append(sub_dataset[0:fold_size])
                 # add the remaining 8 folds to the training dataset
                 folds_train.append(sub_dataset[fold_size:-1])
