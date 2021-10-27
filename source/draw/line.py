@@ -1,7 +1,6 @@
 import typing
 
 import matplotlib
-import numpy
 
 
 def line(axes: matplotlib.axes,
@@ -25,4 +24,6 @@ def line(axes: matplotlib.axes,
         size of the line rendered
     """
 
-    axes.plot(source[0], source[1], target[0], target[1])
+    axes.plot([source[0], target[0]], [source[1], target[1]],
+            color=[0, 0, 0],
+            linewidth=1)

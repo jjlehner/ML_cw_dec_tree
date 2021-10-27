@@ -57,3 +57,5 @@ if __name__ == '__main__':
     noisy_accuracy = numpy.mean(noisy_prediction[0] != noisy_test_data[:, -1])
     print(clean_accuracy)
     print(noisy_accuracy)
+
+    clean_tree.draw()

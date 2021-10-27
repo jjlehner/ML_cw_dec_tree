@@ -45,8 +45,13 @@ def label(axes: matplotlib.axes,
     top_right = numpy.amax(numpy.array(path.vertices), axis=0)
 
     # Calculate the text's scale and size
-    scale = numpy.subtract(top_right - bottom_left)
-    size = [_height / numpy.prod(scale), _height]
+    # scale = numpy.subtract(top_right, bottom_left)
+    # size = [_height / numpy.prod(scale), _height]
+    size = [0, 1.5]
+    scale = [0, 0]
+    scale[0] = (top_right[0] - bottom_left[0])
+    scale[1] = (top_right[1] - bottom_left[1])
+    size[0] = size[1] / scale[1] * scale[0]
 
     # Scale each vertex's position relative to the origin
     vertices = []
@@ -65,7 +70,7 @@ def label(axes: matplotlib.axes,
 
     # Create a patch from the vertex points
     path = Path(numpy.array(vertices), path.codes)
-    patch = patches.PatchPath(path, color=[1, 1, 1], lw=0, zorder=1)
+    patch = patches.PathPatch(path, color=[1, 1, 1], lw=0, zorder=10)
     axes.add_patch(patch)
 
     return size
