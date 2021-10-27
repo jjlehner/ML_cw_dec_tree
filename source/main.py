@@ -18,7 +18,21 @@ def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False):
 
     # generate the folds
     if validation:
-        pass
+        for j in range(0, k):
+            # reserve 1 fold for the test dataset
+            #folds_test.append(dataset[0:fold_size])
+            sub_dataset = dataset[fold_size:-1]
+            for i in range(0, k-1):
+                folds_test.append(dataset[0:fold_size])
+                # reserve 1 fold for the validation dataset
+                folds_validation.append(sub_dataset[0:fold_size])
+                # add the remaining 8 folds to the training dataset
+                folds_train.append(sub_dataset[fold_size:-1])
+                # roll the folds for next iteration
+                sub_dataset = np.roll(sub_dataset, shift=fold_size, axis=0)
+            # roll the folds for next iteration
+            dataset = np.roll(dataset, shift=fold_size, axis=0)
+        return (np.squeeze(np.asarray(folds_test)), np.squeeze(np.asarray(folds_validation)), np.squeeze(np.asarray(folds_train)))
     else:
         for i in range(0, k):
             # reserve 1 fold for the test dataset
@@ -26,38 +40,48 @@ def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False):
             # add the remaining 9 folds to the training dataset
             folds_train.append(dataset[fold_size:-1])
             # roll the folds for next iteration
-            dataset = np.roll(dataset, shift=1, axis=0)
+            dataset = np.roll(dataset, shift=fold_size, axis=0)
         return (np.squeeze(np.asarray(folds_test)), np.squeeze(np.asarray(folds_train)))
 
 
 def evaluate(test_db, trained_tree):
-    return np.mean(np.equal(trained_tree.predict(test_db[:,:-1]),test_db[:, -1]))
+    return trained_tree.evaluate(test_db)
 
 
-def step3(dataset):
+def train_and_test(dataset: np.ndarray, pruning: bool = False):
 
     # Number of folds for the cross-validation
     k = 10
     
     # generate said folds
-    (folds_test, folds_train) = generate_folds(dataset, k=k)
+    folds_test = None
+    folds_train = None
+    folds_validation = None
+    if not pruning:
+        (folds_test, folds_train) = generate_folds(dataset, k=k)
+    else:
+        (folds_test, folds_validation, folds_train) = generate_folds(dataset, k=k, validation=True)
+        print(folds_validation.shape)
 
     # initialize global metrics
     globalConfusionMatrix = np.zeros((4,4))
     globalAccuracy = 0
     fold_index = 0              # iteration counter for debugging
     
+    nb_of_folds = folds_train.shape[0]
+    print(f'nb_of_folds = {nb_of_folds}')
+
     # train and test each set of folds on the dataset
-    for test, train in zip(folds_test, folds_train):
+    for i in range(0, nb_of_folds):
         # Training: train the tree on the training dataset
-        treeClean = DTCN(train[:-1],0)
+        treeClean = DTCN(folds_train[i][:-1],0)
+        if pruning: treeClean.prune(folds_validation[i], treeClean)
         # Testing: generate the confusion matrix over the test dataset
-        globalConfusionMatrix += treeClean.generate_confusion_matrix(test)/k
+        globalConfusionMatrix += treeClean.generate_confusion_matrix(folds_test[i]) / nb_of_folds
         # evaluate the accuracy of the current fold
-        accuracy = evaluate(test, treeClean)
-        print(f' - Accuracy of fold {fold_index} = {accuracy}')
-        globalAccuracy += accuracy / k
-        fold_index += 1
+        accuracy = evaluate(folds_test[i], treeClean)
+        print(f' - Accuracy of fold {i} = {accuracy}')
+        globalAccuracy += accuracy / nb_of_folds
 
     # compute the global metrics
     confusionAverage = np.trace(globalConfusionMatrix) / np.sum(globalConfusionMatrix)
@@ -76,17 +100,23 @@ def step3(dataset):
         # F1 = 2 x precision x recall / (precision + recall)
         f1.append((2 * precision[i] * recall[i]) / (precision[i] + recall[i]))
         print(f" -> Room {i+1}: Precision = {precision[i]}, Recall = {recall[i]}, F1 = {f1[i]}")
-
+    
 
 if __name__ == '__main__':
     # load both the clean and noisy datasets
     clean_data = data.load_clean()
     noisy_data = data.load_noisy()
 
-    # train and test the tree over both datasets
+    #train and test the tree over both datasets
     print("\nStep 3 Results with clean data:")
-    step3(clean_data)
+    train_and_test(clean_data)
     print("\nStep 3 Results with noisy data:")
-    step3(noisy_data)
+    train_and_test(noisy_data)
+
+    print("\nStep 4 Pruning results with clean data:")
+    train_and_test(clean_data, pruning=True)
+    print("\nStep 4 Pruning results with noisy data:")
+    train_and_test(noisy_data, pruning=True)
+
     
     

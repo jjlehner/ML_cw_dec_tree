@@ -1,4 +1,5 @@
 import math
+from operator import truediv
 import typing
 
 import numpy as np
@@ -17,6 +18,7 @@ class DecisionTreeClassifierNode:
         elif(len(label_count) == 1):
             self.leaf = True
             self.room = label
+            self.elements_under_leaf = dataset.shape[0]
             return 
         else:
             self.leaf = False
@@ -27,6 +29,32 @@ class DecisionTreeClassifierNode:
             self.upperBranch = DecisionTreeClassifierNode(upper_dataset, depth + 1)
             return 
 
+    # evaluate the whole tree that the current node is a part of
+    def evaluate(self, test_db):
+        return np.mean(np.equal(self.predict(test_db[:,:-1]),test_db[:, -1]))
+        
+    def prune(self, validation, root):
+        if self.leaf:
+            return
+        else:
+            self.lowerBranch.prune(validation, root)
+            self.upperBranch.prune(validation, root)
+        
+        if self.lowerBranch.leaf and self.upperBranch.leaf:
+            validationAccuracyBefore = root.evaluate(validation)
+            self.room = self.lowerBranch.room if self.lowerBranch.elements_under_leaf < self.upperBranch.elements_under_leaf else self.upperBranch.room
+            self.leaf = True
+            validationAccuracyAfter = root.evaluate(validation)
+            if validationAccuracyAfter < validationAccuracyBefore:
+                self.leaf = False
+                self.room = None
+            else:
+                self.elements_under_leaf = self.lowerBranch.elements_under_leaf + self.upperBranch.elements_under_leaf
+                self.lowerBranch = None
+                self.upperBranch = None
+
+    
+    
     def predict_row(self, x):
         if self.leaf:
             return self.room
