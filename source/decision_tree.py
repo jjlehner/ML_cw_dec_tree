@@ -42,7 +42,7 @@ class DecisionTreeClassifierNode:
         
         if self.lowerBranch.leaf and self.upperBranch.leaf:
             validationAccuracyBefore = root.evaluate(validation)
-            self.room = self.lowerBranch.room if self.lowerBranch.elements_under_leaf < self.upperBranch.elements_under_leaf else self.upperBranch.room
+            self.room = self.lowerBranch.room if self.lowerBranch.elements_under_leaf > self.upperBranch.elements_under_leaf else self.upperBranch.room
             self.leaf = True
             validationAccuracyAfter = root.evaluate(validation)
             if validationAccuracyAfter < validationAccuracyBefore:
