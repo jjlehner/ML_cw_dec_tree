@@ -1,9 +1,31 @@
-import data
-from decision_tree import DecisionTreeClassifierNode as DTCN
 import numpy as np
 
+import data
+from decision_tree import DecisionTreeClassifierNode as DTCN
 
-def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False):
+def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False) -> np.ndarray:
+    """ Generates all possibl folds given a dataset
+
+    Arguments
+    ---------
+    dataset: np.ndarray
+        The dataset to generate folds from
+
+    k: int
+        The number of folds to produce
+
+    validation: bool
+        Whether to produce a validation sets as well as test and train sets
+    
+    Returns
+    -------
+    folds_test:
+        k (or k*(k-1) if a validation set is requested) folds of testing data samples
+    folds_validation:
+        If specified, k*(k-1) folds of validation data samples
+    folds_training:
+        k (or k*(k-1) if a validation set is requested) folds of training data samples
+    """
     # suffle the dataset randomly
     rng = np.random.default_rng()
     rng.shuffle(dataset)
@@ -43,12 +65,45 @@ def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False):
         return (np.squeeze(np.asarray(folds_test)), np.squeeze(np.asarray(folds_train)))
 
 
-def evaluate(test_db, trained_tree):
+def evaluate(test_db: np.ndarray, trained_tree: DTCN) -> float:
+    """ Evaluates the tree by returning its accuracy
+
+    Arguments
+    ---------
+    test_db: np.ndarray
+        The dataset used to evaluate the tree against
+
+    trained_tree: DecisionTreeClassifierNode
+        The root node of the tree which is being evaluated
+    
+    Returns
+    -------
+    output: float
+        The tree's accuracy
+    """
     return trained_tree.evaluate(test_db)
 
+def decision_tree_learning(dataset: np.ndarray, pruning: bool = False, verbose: bool = False) -> DTCN:
+    """ Generates decision tree
 
-def train_and_test(dataset: np.ndarray, pruning: bool = False):
+    Arguments
+    ---------
+    dataset: np.ndarray
+        The dataset used to train, test and validate the tree
 
+    pruning: bool
+        Decides whether to prune the tree using a validation flold in order to potentially incrase 
+        accuracy
+    
+    verbose: bool
+        Boolean to print more details on the steps done
+
+    Returns
+    -------
+    best_tree: DecisionTreeClassifierNode
+        A trained tree with the highest level of accuracy on every possible fold
+    """
+        
     # Number of folds for the cross-validation
     k = 10
     
@@ -60,32 +115,38 @@ def train_and_test(dataset: np.ndarray, pruning: bool = False):
         (folds_test, folds_train) = generate_folds(dataset, k=k)
     else:
         (folds_test, folds_validation, folds_train) = generate_folds(dataset, k=k, validation=True)
-        print(folds_validation.shape)
 
     # initialize global metrics
-    globalConfusionMatrix = np.zeros((4,4))
-    globalAccuracy = 0
-    fold_index = 0              # iteration counter for debugging
+    global_confusion_matrix = np.zeros((4,4))
+    global_accuracy = 0
     
     nb_of_folds = folds_train.shape[0]
-    print(f'nb_of_folds = {nb_of_folds}')
+    if verbose: print(f'Number of cross-validation folds = {nb_of_folds}')
+    
+    best_tree = None
+    best_accuracy = 0.0
 
     # train and test each set of folds on the dataset
     for i in range(0, nb_of_folds):
         # Training: train the tree on the training dataset
-        treeClean = DTCN(folds_train[i][:-1],0)
-        if pruning: treeClean.prune(folds_validation[i], treeClean)
+        tree = DTCN(folds_train[i][:-1],0)
+        if pruning: tree.prune(folds_validation[i], tree)
         # Testing: generate the confusion matrix over the test dataset
-        globalConfusionMatrix += treeClean.generate_confusion_matrix(folds_test[i]) / nb_of_folds
+        global_confusion_matrix += tree.generate_confusion_matrix(folds_test[i]) / nb_of_folds
         # evaluate the accuracy of the current fold
-        accuracy = evaluate(folds_test[i], treeClean)
-        print(f' - Accuracy of fold {i} = {accuracy}')
-        globalAccuracy += accuracy / nb_of_folds
+        accuracy = evaluate(folds_test[i], tree)
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_tree = tree
+        if verbose: print(f' - Accuracy of fold {i} = {accuracy}')
+        global_accuracy += accuracy / nb_of_folds
 
     # compute the global metrics
-    confusionAverage = np.trace(globalConfusionMatrix) / np.sum(globalConfusionMatrix)
-    print(f"Confusion average accuracy {confusionAverage}, Global Accuracy {globalAccuracy}")
-    print(globalConfusionMatrix)
+    confusion_average = np.trace(global_confusion_matrix) / np.sum(global_confusion_matrix)
+    if verbose: print(f'Global Accuracy: {global_accuracy}')
+    if verbose: print('\nThe confusion matrix is:')
+    if verbose: print(global_confusion_matrix)
+    if verbose: print(f'Confusion matrix average accuracy: {confusion_average}') 
     
     # compute the precision, recall and F1 for each class (= each Room)
     precision = list()
@@ -93,29 +154,34 @@ def train_and_test(dataset: np.ndarray, pruning: bool = False):
     f1 = list()
     for i in range(0, 4):
         # precision = element at [i,i] over the sum of the ith row
-        precision.append(globalConfusionMatrix[i,i] / np.sum(globalConfusionMatrix[:, i]))
+        precision.append(global_confusion_matrix[i,i] / np.sum(global_confusion_matrix[:, i]))
         # recall = element at [i,i] over the sum of the ith column
-        recall.append(globalConfusionMatrix[i,i] / np.sum(globalConfusionMatrix[i]))
+        recall.append(global_confusion_matrix[i,i] / np.sum(global_confusion_matrix[i]))
         # F1 = 2 x precision x recall / (precision + recall)
         f1.append((2 * precision[i] * recall[i]) / (precision[i] + recall[i]))
-        print(f" -> Room {i+1}: Precision = {precision[i]}, Recall = {recall[i]}, F1 = {f1[i]}")
+        if verbose: print(f" -> Room {i+1}: Precision = {precision[i]}, Recall = {recall[i]}, F1 = {f1[i]}")
     
+    return best_tree
 
 if __name__ == '__main__':
     # load both the clean and noisy datasets
     clean_data = data.load_clean()
     noisy_data = data.load_noisy()
-
+    
     #train and test the tree over both datasets
-    print("\nStep 3 Results with clean data:")
-    train_and_test(clean_data)
-    print("\nStep 3 Results with noisy data:")
-    train_and_test(noisy_data)
+    print("\n\nStep 3 - Results with clean data:\n")
+    decision_tree_learning(clean_data, verbose=True)
+    print("\n\nStep 3 - Results with noisy data:\n")
+    tree = decision_tree_learning(noisy_data, verbose=True)
+    tree.draw()
 
-    print("\nStep 4 Pruning results with clean data:")
-    train_and_test(clean_data, pruning=True)
-    print("\nStep 4 Pruning results with noisy data:")
-    train_and_test(noisy_data, pruning=True)
-
+    print("\nStep 4 - Pruning results with clean data:")
+    decision_tree_learning(clean_data, pruning=True, verbose=True)
+    print("\n\nStep 4 - Pruning results with noisy data:")
+    pruned_tree = decision_tree_learning(noisy_data, pruning=True, verbose=True)
+    pruned_tree.draw()
     
     
+
+
+
