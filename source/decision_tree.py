@@ -1,7 +1,7 @@
 import math
 import typing
 
-import numpy
+import numpy as np
 import sys
 
 import matplotlib
@@ -9,10 +9,9 @@ from matplotlib import pyplot
 
 import draw
 
+class DecisionTreeClassifierNode:
 
-class ClassifierNode:
-
-    def __init__(self, dataset: numpy.ndarray, depth: int):
+    def __init__(self, dataset: np.ndarray, depth: int):
 
         # Initialize branches, label
         self.lower_branch = None
@@ -25,9 +24,10 @@ class ClassifierNode:
         self.split_value = 0
         self.column = 0
         self.width = 0
+        self.elements_under_leaf = 0
 
         # Evaluate label and unique values in data set
-        label, unique_counts = numpy.unique(dataset[:, -1], return_counts=True)
+        label, unique_counts = np.unique(dataset[:, -1], return_counts=True)
         label_count = len(unique_counts)
 
         # If only one sample present, flag node as leaf
@@ -35,32 +35,82 @@ class ClassifierNode:
             self.leaf = True
             self.width = 10
             self.label = int(label[0])
+            self.elements_under_leaf = dataset.shape[0]
 
         # Otherwise, split the data set and create two sub-branches
         else:
             self.split_value, self.column = self.find_split(dataset)
-            self.label = f'< {self.split_value} ≤'
+            self.label = f'x{self.column} : < {self.split_value} ≤'
 
             lower_dataset = dataset[dataset[:, self.column] < self.split_value]
             upper_dataset = dataset[dataset[:, self.column] > self.split_value]
-
-            self.lower_branch = ClassifierNode(lower_dataset, depth + 1)
-            self.upper_branch = ClassifierNode(upper_dataset, depth + 1)
+            self.lower_branch = DecisionTreeClassifierNode(lower_dataset, depth + 1)
+            self.upper_branch = DecisionTreeClassifierNode(upper_dataset, depth + 1)
 
             self.width += self.lower_branch.width
             self.width += self.upper_branch.width
+    
+    def evaluate(self, test_db) -> float:
+        """ Evaluates a tree
 
-    def predict_row(self, dataset: numpy.ndarray) -> numpy.ndarray:
+        Arguments
+        ---------
+        test_db: np.ndarray
+            the dataset with which to evaluate the tree gainst
+
+        Returns
+        -------
+        accuracy: float
+            the accuracy of the tree with the test_db testing set
+        """
+        
+        return np.mean(np.equal(self.predict(test_db[:,:-1]),test_db[:, -1]))
+        
+    def prune(self, validation: np.ndarray, root: 'DecisionTreeClassifierNode'):
+        """ Reduce overfitting across the tree to increase generalyse to unknown data. 
+                Change the state of the tree by removing/pruning nodes that decrease the accuracy of the Decision Tree
+
+        Arguments
+        ---------
+        validation: np.ndarray
+            The dataset used to evaluate the change in accuracy after pruning a node
+
+        root: DecisionTreeClassifierNode
+            The root node of the tree on which to apply the pruning
+        """
+        
+        if self.leaf:
+            return
+        else:
+            self.lower_branch.prune(validation, root)
+            self.upper_branch.prune(validation, root)
+        
+        if self.lower_branch.leaf and self.upper_branch.leaf:
+            validation_accuracy_before = root.evaluate(validation)
+            self.label = self.lower_branch.label if self.lower_branch.elements_under_leaf > self.upper_branch.elements_under_leaf else self.upper_branch.label
+            self.leaf = True
+            validation_accuracy_after = root.evaluate(validation)
+            if validation_accuracy_after < validation_accuracy_before:
+                self.leaf = False
+                self.label = f'x{self.column} : < {self.split_value} ≤'
+            else:
+                self.elements_under_leaf = self.lower_branch.elements_under_leaf + self.upper_branch.elements_under_leaf
+                self.lower_branch = None
+                self.upper_branch = None
+                self.split_value = None
+
+
+    def predict_row(self, dataset: np.ndarray) -> np.ndarray:
         """ Predict the value of the first row in a dataset
 
         Arguments
         ---------
-        dataset: numpy.ndarray
+        dataset: np.ndarray
 
 
         Returns
         -------
-        row_prediction: numpy.ndarray
+        row_prediction: np.ndarray
             the predicted row value
         """
 
@@ -72,27 +122,27 @@ class ClassifierNode:
 
         return branch.predict_row(dataset)
 
-    def predict(self, dataset: numpy.ndarray) -> numpy.ndarray:
+    def predict(self, dataset: np.ndarray) -> np.ndarray:
         """ Predict the result for each row in a dataset
 
         Arguments
         ---------
-        dataset: numpy.ndarray
+        dataset: np.ndarray
             dataset, the rows of which to predict
 
         Returns
         -------
-        predictions: numpy.ndarray
+        predictions: np.ndarray
+            list of predictions for each row of the associated test dataset
         """
-
-        return [self.predict_row(row_index) for row_index in dataset]
+        return np.squeeze(np.array([self.predict_row(row_index) for row_index in dataset]))
 
     def compute_entropy(self, dataset) -> float:
         """ Evaluate the entropy of a dataset
 
         Arguments
         ---------
-        dataset: numpy.ndarray
+        dataset: np.ndarray
             dataset, the entropy of which to calculate
 
         Returns
@@ -102,12 +152,12 @@ class ClassifierNode:
         """
 
         # Extract a subarray of unique elements in the dataset
-        _, unique_elements = numpy.unique(dataset[:, -1], return_counts=True)
+        _, unique_elements = np.unique(dataset[:, -1], return_counts=True)
 
         # Perform
         running_sum = 0
         for element in unique_elements:
-            unique_value = float(numpy.sum(unique_elements))
+            unique_value = float(np.sum(unique_elements))
             element_value = float(element)
 
             fraction = element_value / unique_value
@@ -115,12 +165,12 @@ class ClassifierNode:
 
         return running_sum
 
-    def find_split(self, dataset: numpy.ndarray) -> typing.Tuple[float, int]:
+    def find_split(self, dataset: np.ndarray) -> typing.Tuple[float, int]:
         """ Finds the ideal split value in a dataset
 
         Arguments
         ---------
-        dataset: numpy.ndarray
+        dataset: np.ndarray
             dataset of which to calculate the best split
 
         Returns
@@ -139,7 +189,7 @@ class ClassifierNode:
         for column_index in range(0, column_count - 1):
 
             # Sort the data set, and extract the column
-            sorted_dataset = dataset[numpy.argsort(dataset[:, column_index])]
+            sorted_dataset = dataset[np.argsort(dataset[:, column_index])]
             column = sorted_dataset[:, column_index]
 
             # Iterate over each row in the column
@@ -179,6 +229,27 @@ class ClassifierNode:
         # Return the best split, column values
         return (best_split, best_column)
 
+    def generate_confusion_matrix(self, test_set) -> np.ndarray:
+        """ Generates a confusion matrix
+
+        Arguments
+        ---------
+        test_set: np.ndarray
+            the test set used to generate the confusion matrix
+
+        Returns
+        -------
+        confusion_matrix: np.array
+            numpy array of size (test_set.shape[0],test_set.shape[0])
+        """
+        confusion_matrix = np.zeros((4,4))
+        predictions = self.predict(test_set[:, :-1])
+        actual = test_set[:, -1]
+        assert len(actual) == len(predictions)
+        for row, col in zip(actual,predictions):
+            confusion_matrix[int(row)-1,int(col)-1] += 1
+        return confusion_matrix
+        
     def draw_segments(self,
             axes: matplotlib.axes,
             origin: typing.List) -> typing.List:
@@ -208,8 +279,8 @@ class ClassifierNode:
             upper_origin[0] += (self.width - upper_width) / 2
             upper_origin[1] -= 10
 
-            lower_root = numpy.add(lower_origin, [0, 10])
-            upper_root = numpy.add(upper_origin, [0, 10])
+            lower_root = np.add(lower_origin, [0, 10])
+            upper_root = np.add(upper_origin, [0, 10])
 
             draw.line(axes, lower_root, upper_root)
             draw.line(axes, lower_origin, lower_root)
@@ -219,7 +290,7 @@ class ClassifierNode:
             self.upper_branch.draw_segments(axes, upper_origin)
 
         label_size = draw.label(axes, origin, f'{self.label}')
-        draw.box(axes, origin, numpy.add(label_size, [5, 5]))
+        draw.box(axes, origin, np.add(label_size, [5, 5]))
 
     def draw(self):
         """ Plot a node and its children

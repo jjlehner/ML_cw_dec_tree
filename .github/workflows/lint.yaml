@@ -1,0 +1,30 @@
+name: Lint (Push)
+
+on:
+  push:
+    branches:
+    - '**'
+    paths:
+    - '**.py'
+
+jobs:
+
+  push-lint:
+    runs-on: ubuntu-latest
+    steps:
+    
+      - name: Install Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+          architecture: x64
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Run flake8
+        run: |
+          flake8 .
