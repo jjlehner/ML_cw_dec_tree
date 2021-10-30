@@ -12,7 +12,7 @@ This code was developped and tested on Ubuntu 20.04 using Python 3.9.1.
 
 #### Getting the codebase
 
-In order to use the codebase, it first needs to be cloned to your local machine using `$ git clone https://github.com/jjlehner/ML_cw_dec_tree.git` in whatever parent folder you want the codebase to be in.
+In order to use the codebase, it first needs to be cloned to your local machine using `$ git clone https://github.com/jjlehner/ML_cw_dec_tree.git` in the parent folder you want the codebase to be in.
 
 You can then enter the project folder using `$ cd ML_cw_dec_tree`.
 
@@ -26,10 +26,10 @@ The main function of the script is in [main.py](/source/main.py). Open this file
 
 ### Loading training and testing databases
 
-Any dataset can be loaded into the program as an `numpy.ndarray` using 
+Any dataset can be loaded into the program as a `numpy.ndarray` using 
 
 ```python
-    my_database = data.load_dataset('path_to_database_file')
+    my_dataset = data.load_dataset('path_to_dataset_file')
 ```
 
 ### Learning process
@@ -66,7 +66,7 @@ And this will output a similar image as the one below:
 
 ### Testing the tree
 
-The tree generated from the `decision_tree_learning` function can be evaluated using the `evaluate` function. This function has the following signature:
+The tree generated from the `decision_tree_learning` function, can be evaluated using the `evaluate` function. This function has the following signature:
 
 ```python
     evaluate(test_db: np.ndarray, trained_tree: DTCN) -> float:
@@ -76,10 +76,10 @@ Where `test_db` is an numpy array containing the input test samples, and `traine
 
 This function returns the **accuracy** of the decision tree evaluated on the test dataset.
 
-It can for example be called as follows:
+It can, for example, be called as follows:
 
 ```python
-    evaluate(my_test_database, my_tree)
+    evaluate(my_test_dataset, my_tree)
 ```
 
 ### Running the program
