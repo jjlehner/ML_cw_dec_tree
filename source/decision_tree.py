@@ -301,5 +301,5 @@ class DecisionTreeClassifierNode:
 
         axes.autoscale_view(True, True, True)
         pyplot.axis('equal')
-print        pyplot.axis('off')
+        pyplot.axis('off')
         pyplot.show()
