@@ -8,6 +8,10 @@
 
 This code was developped and tested on Ubuntu 20.04 using Python 3.9.1.
 
+It relies on the following dependencies:
+ - NumPy
+ - MatPlotlib
+
 ### Installation process
 
 #### Getting the codebase
@@ -16,20 +20,28 @@ In order to use the codebase, it first needs to be cloned to your local machine 
 
 You can then enter the project folder using `$ cd ML_cw_dec_tree`.
 
-#### Accessing the main script
+#### Accessing the main script or creating a new one
 
-The main function of the script is in [main.py](/source/main.py). Open this file to write your own script using the existing codebase.
+An example script using our codebase is in [main.py](/source/main.py) and performs step 3 and 4 for the noisy and clean dataset. Open this file to modify it, or to see how to write your own script using the existing codebase.
+
+If you decide to create a new seperate script, simply import the library with the following code:
+
+```python
+    from decision_tree import *
+```
+
+
 
 <br />
 
-## Using the program
+## Using the Library
 
 ### Loading training and testing databases
 
-Any dataset can be loaded into the program as a `numpy.ndarray` using 
+Any dataset can be loaded into the script as a `numpy.ndarray` using 
 
 ```python
-    my_dataset = data.load_dataset('path_to_dataset_file')
+    my_dataset = load_dataset('path_to_dataset_file')
 ```
 
 ### Learning process
@@ -82,6 +94,6 @@ It can, for example, be called as follows:
     evaluate(my_test_dataset, my_tree)
 ```
 
-### Running the program
+### Running the script
 
-The `main.py` script now being completed, the program can be ran by typing `$ python main.py` or `$ python3 main.py` in the terminal, depending on your Python installation.
+The `main.py` script now being completed, it can be ran by typing `$ python main.py` or `$ python3 main.py` in the terminal, depending on your Python installation.
