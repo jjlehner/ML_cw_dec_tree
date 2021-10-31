@@ -52,10 +52,10 @@ For example, the function can therefore be called as follows on our custom datas
 
 #### Bonus: Drawing the learned tree
 
-The resulting tree of the learning process can be printed out using the method `draw()` on the `DTCN` (`DecisionTreeClassifierNode`) object as follows:
+The resulting tree of the learning process can be printed out using the `draw` function with the `DTCN` (`DecisionTreeClassifierNode`) object as argument:
 
 ```python
-    my_tree.draw()
+    draw(my_tree)
 ```
 
 And this will output a similar image as the one below:
