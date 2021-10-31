@@ -1,6 +1,3 @@
-import numpy as np
-
-import data
 from decision_tree import *
 
 if __name__ == '__main__':

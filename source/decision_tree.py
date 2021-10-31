@@ -1,5 +1,6 @@
 
 import numpy as np
+import data
 from decision_tree_classifier_node import DecisionTreeClassifierNode as DTCN
 
 def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False) -> np.ndarray:
@@ -173,3 +174,18 @@ def draw(trained_tree: DTCN):
         The tree to draw
     """
     trained_tree.draw()
+
+def load_dataset(path: str) -> np.ndarray:
+    """ Loads a data set from /wifi_db
+
+    Arguments
+    ---------
+    path: str
+        path of the file to load
+
+    Returns
+    -------
+    output: numpy.ndarray
+        dimensional array containing dataset information
+    """
+    return data.load_dataset(path)
