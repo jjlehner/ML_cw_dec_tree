@@ -1,310 +1,175 @@
-import math
-import typing
 
 import numpy as np
-import sys
+from decision_tree_classifier_node import DecisionTreeClassifierNode as DTCN
 
-import matplotlib
-from matplotlib import pyplot
+def generate_folds(dataset: np.ndarray, k: int=10, validation: bool=False) -> np.ndarray:
+    """ Generates all possibl folds given a dataset
 
-import draw
+    Arguments
+    ---------
+    dataset: np.ndarray
+        The dataset to generate folds from
 
-class DecisionTreeClassifierNode:
+    k: int
+        The number of folds to produce
 
-    def __init__(self, dataset: np.ndarray, depth: int):
-
-        # Initialize branches, label
-        self.lower_branch = None
-        self.upper_branch = None
-
-        # Initialize meta-information
-        self.depth: int = depth
-        self.label = ''
-        self.leaf = False
-        self.split_value = 0
-        self.column = 0
-        self.width = 0
-        self.elements_under_leaf = 0
-
-        # Evaluate label and unique values in data set
-        label, unique_counts = np.unique(dataset[:, -1], return_counts=True)
-        label_count = len(unique_counts)
-
-        # If only one sample present, flag node as leaf
-        if label_count == 1:
-            self.leaf = True
-            self.width = 10
-            self.label = int(label[0])
-            self.elements_under_leaf = dataset.shape[0]
-
-        # Otherwise, split the data set and create two sub-branches
-        else:
-            self.split_value, self.column = self.find_split(dataset)
-            self.label = f'x{self.column} : < {self.split_value} ≤'
-
-            lower_dataset = dataset[dataset[:, self.column] < self.split_value]
-            upper_dataset = dataset[dataset[:, self.column] > self.split_value]
-            self.lower_branch = DecisionTreeClassifierNode(lower_dataset, depth + 1)
-            self.upper_branch = DecisionTreeClassifierNode(upper_dataset, depth + 1)
-
-            self.width += self.lower_branch.width
-            self.width += self.upper_branch.width
+    validation: bool
+        Whether to produce a validation sets as well as test and train sets
     
-    def evaluate(self, test_db) -> float:
-        """ Evaluates a tree
+    Returns
+    -------
+    folds_test:
+        k (or k*(k-1) if a validation set is requested) folds of testing data samples
+    folds_validation:
+        If specified, k*(k-1) folds of validation data samples
+    folds_training:
+        k (or k*(k-1) if a validation set is requested) folds of training data samples
+    """
+    # suffle the dataset randomly
+    rng = np.random.default_rng()
+    rng.shuffle(dataset)
 
-        Arguments
-        ---------
-        test_db: np.ndarray
-            the dataset with which to evaluate the tree gainst
+    # initialize the lists of folds
+    folds_test = list()
+    folds_validation = list()
+    folds_train = list()
 
-        Returns
-        -------
-        accuracy: float
-            the accuracy of the tree with the test_db testing set
-        """
+    # compute the size of each fold
+    fold_size = int(dataset.shape[0]/k)
+
+    # generate the folds
+    if validation:
+        for j in range(0, k):
+            sub_dataset = dataset[fold_size:-1]
+            for i in range(0, k-1):
+                # reserve 1 fold for the test dataset (single roll)
+                folds_test.append(dataset[0:fold_size])
+                # reserve 1 fold for the validation dataset (double roll)
+                folds_validation.append(sub_dataset[0:fold_size])
+                # add the remaining 8 folds to the training dataset
+                folds_train.append(sub_dataset[fold_size:-1])
+                # roll the folds for next iteration
+                sub_dataset = np.roll(sub_dataset, shift=fold_size, axis=0)
+            # roll the folds for next iteration
+            dataset = np.roll(dataset, shift=fold_size, axis=0)
+        return (np.squeeze(np.asarray(folds_test)), np.squeeze(np.asarray(folds_validation)), np.squeeze(np.asarray(folds_train)))
+    else:
+        for i in range(0, k):
+            # reserve 1 fold for the test dataset
+            folds_test.append(dataset[0:fold_size])
+            # add the remaining 9 folds to the training dataset
+            folds_train.append(dataset[fold_size:-1])
+            # roll the folds for next iteration
+            dataset = np.roll(dataset, shift=fold_size, axis=0)
+        return (np.squeeze(np.asarray(folds_test)), np.squeeze(np.asarray(folds_train)))
+
+
+def evaluate(test_db: np.ndarray, trained_tree: DTCN) -> float:
+    """ Evaluates the tree by returning its accuracy
+
+    Arguments
+    ---------
+    test_db: np.ndarray
+        The dataset used to evaluate the tree against
+
+    trained_tree: DecisionTreeClassifierNode
+        The root node of the tree which is being evaluated
+    
+    Returns
+    -------
+    output: float
+        The tree's accuracy
+    """
+    return trained_tree.evaluate(test_db)
+
+def decision_tree_learning(dataset: np.ndarray, pruning: bool = False, verbose: bool = False) -> DTCN:
+    """ Generates decision tree
+
+    Arguments
+    ---------
+    dataset: np.ndarray
+        The dataset used to train, test and validate the tree
+
+    pruning: bool
+        Decides whether to prune the tree using a validation flold in order to potentially incrase 
+        accuracy
+    
+    verbose: bool
+        Boolean to print more details on the steps done
+
+    Returns
+    -------
+    best_tree: DecisionTreeClassifierNode
+        A trained tree with the highest level of accuracy on every possible fold
+    """
         
-        return np.mean(np.equal(self.predict(test_db[:,:-1]),test_db[:, -1]))
-        
-    def prune(self, validation: np.ndarray, root: 'DecisionTreeClassifierNode'):
-        """ Reduce overfitting across the tree to increase generalyse to unknown data. 
-                Change the state of the tree by removing/pruning nodes that decrease the accuracy of the Decision Tree
+    # Number of folds for the cross-validation
+    k = 10
+    
+    # generate said folds
+    folds_test = None
+    folds_train = None
+    folds_validation = None
+    if not pruning:
+        (folds_test, folds_train) = generate_folds(dataset, k=k)
+    else:
+        (folds_test, folds_validation, folds_train) = generate_folds(dataset, k=k, validation=True)
 
-        Arguments
-        ---------
-        validation: np.ndarray
-            The dataset used to evaluate the change in accuracy after pruning a node
+    # initialize global metrics
+    global_confusion_matrix = np.zeros((4,4))
+    global_accuracy = 0
+    
+    nb_of_folds = folds_train.shape[0]
+    if verbose: print(f'Number of cross-validation folds = {nb_of_folds}')
+    
+    best_tree = None
+    best_accuracy = 0.0
+    average_depth = 0
 
-        root: DecisionTreeClassifierNode
-            The root node of the tree on which to apply the pruning
-        """
-        
-        if self.leaf:
-            return
-        else:
-            self.lower_branch.prune(validation, root)
-            self.upper_branch.prune(validation, root)
-        
-        if self.lower_branch.leaf and self.upper_branch.leaf:
-            validation_accuracy_before = root.evaluate(validation)
-            self.label = self.lower_branch.label if self.lower_branch.elements_under_leaf > self.upper_branch.elements_under_leaf else self.upper_branch.label
-            self.leaf = True
-            validation_accuracy_after = root.evaluate(validation)
-            if validation_accuracy_after < validation_accuracy_before:
-                self.leaf = False
-                self.label = f'x{self.column} : < {self.split_value} ≤'
-            else:
-                self.elements_under_leaf = self.lower_branch.elements_under_leaf + self.upper_branch.elements_under_leaf
-                self.lower_branch = None
-                self.upper_branch = None
-                self.split_value = None
+    # train and test each set of folds on the dataset
+    for i in range(0, nb_of_folds):
+        # Training: train the tree on the training dataset
+        tree = DTCN(folds_train[i][:-1],0)
+        if pruning: tree.prune(folds_validation[i], tree)
+        # Testing: generate the confusion matrix over the test dataset
+        global_confusion_matrix += tree.generate_confusion_matrix(folds_test[i]) / nb_of_folds
+        # evaluate the accuracy of the current fold
+        accuracy = evaluate(folds_test[i], tree)
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_tree = tree
+        if verbose: print(f' - Accuracy of fold {i} = {accuracy}')
+        global_accuracy += accuracy / nb_of_folds
+        average_depth += tree.max_depth() / nb_of_folds
 
+    # compute the global metrics
+    confusion_average = np.trace(global_confusion_matrix) / np.sum(global_confusion_matrix)
+    if verbose: print(f'Global Accuracy: {global_accuracy}')
+    if verbose: print('\nThe confusion matrix is:')
+    if verbose: print(global_confusion_matrix)
+    if verbose: print(f'Confusion matrix average accuracy: {confusion_average}') 
+    
+    # compute the precision, recall and F1 for each class (= each Room)
+    precision = list()
+    recall = list()
+    f1 = list()
+    for i in range(0, 4):
+        # precision = element at [i,i] over the sum of the ith row
+        precision.append(global_confusion_matrix[i,i] / np.sum(global_confusion_matrix[:, i]))
+        # recall = element at [i,i] over the sum of the ith column
+        recall.append(global_confusion_matrix[i,i] / np.sum(global_confusion_matrix[i]))
+        # F1 = 2 x precision x recall / (precision + recall)
+        f1.append((2 * precision[i] * recall[i]) / (precision[i] + recall[i]))
+        if verbose: print(f" -> Room {i+1}: Precision = {precision[i]}, Recall = {recall[i]}, F1 = {f1[i]}")
+    if verbose: print(f"Average Depth of tree: {average_depth}")
+    return best_tree
 
-    def predict_row(self, dataset: np.ndarray) -> np.ndarray:
-        """ Predict the value of the first row in a dataset
+def draw(trained_tree: DTCN):
+    """ Draws a tree with matplotlib
 
-        Arguments
-        ---------
-        dataset: np.ndarray
-
-
-        Returns
-        -------
-        row_prediction: np.ndarray
-            the predicted row value
-        """
-
-        if self.leaf:
-            return self.label
-
-        align_lower = dataset[self.column] < self.split_value
-        branch = self.lower_branch if align_lower else self.upper_branch
-
-        return branch.predict_row(dataset)
-
-    def predict(self, dataset: np.ndarray) -> np.ndarray:
-        """ Predict the result for each row in a dataset
-
-        Arguments
-        ---------
-        dataset: np.ndarray
-            dataset, the rows of which to predict
-
-        Returns
-        -------
-        predictions: np.ndarray
-            list of predictions for each row of the associated test dataset
-        """
-        return np.squeeze(np.array([self.predict_row(row_index) for row_index in dataset]))
-
-    def compute_entropy(self, dataset) -> float:
-        """ Evaluate the entropy of a dataset
-
-        Arguments
-        ---------
-        dataset: np.ndarray
-            dataset, the entropy of which to calculate
-
-        Returns
-        -------
-        entropy: float
-            entropy of the dataset
-        """
-
-        # Extract a subarray of unique elements in the dataset
-        _, unique_elements = np.unique(dataset[:, -1], return_counts=True)
-
-        # Perform
-        running_sum = 0
-        for element in unique_elements:
-            unique_value = float(np.sum(unique_elements))
-            element_value = float(element)
-
-            fraction = element_value / unique_value
-            running_sum -= fraction * math.log2(fraction)
-
-        return running_sum
-
-    def find_split(self, dataset: np.ndarray) -> typing.Tuple[float, int]:
-        """ Finds the ideal split value in a dataset
-
-        Arguments
-        ---------
-        dataset: np.ndarray
-            dataset of which to calculate the best split
-
-        Returns
-        -------
-        best_split, best_column: typing.Tuple[float, int]
-            the best split, and best column values
-        """
-
-        # Initialize loop variants
-        best_entropy = sys.float_info.max
-        best_column = 0
-        best_split = 0
-
-        # Iterate over each column in the dataset (ignoring the label column)
-        column_count = dataset.shape[1]
-        for column_index in range(0, column_count - 1):
-
-            # Sort the data set, and extract the column
-            sorted_dataset = dataset[np.argsort(dataset[:, column_index])]
-            column = sorted_dataset[:, column_index]
-
-            # Iterate over each row in the column
-            for row_index in enumerate(sorted_dataset[:-1]):
-
-                # Ignore consecutive identical rows
-                if column[row_index[0]] == column[row_index[0] + 1]:
-                    continue
-
-                # Create a lower and upper dataset, and evaluate their
-                # respective entropies
-                lower = sorted_dataset[:row_index[0]]
-                upper = sorted_dataset[row_index[0]:]
-                lower_entropy = self.compute_entropy(lower)
-                upper_entropy = self.compute_entropy(upper)
-
-                # Evaluate the number of elements in each dataset
-                row_count = dataset.shape[0]
-                lower_average = row_index[0] / row_count
-                upper_average = (row_count - row_index[0]) / row_count
-
-                # Calculate the total entropy
-                lower_sum = lower_average * lower_entropy
-                upper_sum = upper_average * upper_entropy
-                total_entropy = lower_sum + upper_sum
-
-                # Update loop invariants, if appropriate
-                if best_entropy > total_entropy:
-                    best_entropy = total_entropy
-                    best_column = column_index
-
-                    # Calculate the new best split
-                    lower_split = column[row_index[0]]
-                    upper_split = column[row_index[0] + 1]
-                    best_split = (lower_split + upper_split) / 2.0
-
-        # Return the best split, column values
-        return (best_split, best_column)
-
-    def generate_confusion_matrix(self, test_set) -> np.ndarray:
-        """ Generates a confusion matrix
-
-        Arguments
-        ---------
-        test_set: np.ndarray
-            the test set used to generate the confusion matrix
-
-        Returns
-        -------
-        confusion_matrix: np.array
-            numpy array of size (test_set.shape[0],test_set.shape[0])
-        """
-        confusion_matrix = np.zeros((4,4))
-        predictions = self.predict(test_set[:, :-1])
-        actual = test_set[:, -1]
-        assert len(actual) == len(predictions)
-        for row, col in zip(actual,predictions):
-            confusion_matrix[int(row)-1,int(col)-1] += 1
-        return confusion_matrix
-        
-    def draw_segments(self,
-            axes: matplotlib.axes,
-            origin: typing.List) -> typing.List:
-
-        """ Evaluate segments of a node and its children
-
-        Arguments
-        ---------
-        origin: typing.List
-            the origin of the node
-
-        Returns
-        -------
-        segments: List
-            the line segments comprising the node and its children
-        """
-
-        if not self.leaf:
-            lower_width = self.lower_branch.width
-            upper_width = self.upper_branch.width
-
-            lower_origin = origin.copy()
-            lower_origin[0] += (lower_width - self.width) / 2
-            lower_origin[1] -= 10
-
-            upper_origin = origin.copy()
-            upper_origin[0] += (self.width - upper_width) / 2
-            upper_origin[1] -= 10
-
-            lower_root = np.add(lower_origin, [0, 10])
-            upper_root = np.add(upper_origin, [0, 10])
-
-            draw.line(axes, lower_root, upper_root)
-            draw.line(axes, lower_origin, lower_root)
-            draw.line(axes, upper_origin, upper_root)
-
-            self.lower_branch.draw_segments(axes, lower_origin)
-            self.upper_branch.draw_segments(axes, upper_origin)
-
-        label_size = draw.label(axes, origin, f'{self.label}')
-        draw.box(axes, origin, np.add(label_size, [5, 5]))
-
-    def draw(self):
-        """ Plot a node and its children
-        """
-
-        figure, axes = pyplot.subplots()
-        self.draw_segments(axes, [0, 0])
-
-        axes.autoscale_view(True, True, True)
-        pyplot.axis('equal')
-        pyplot.axis('off')
-        pyplot.show()
-
-    def max_depth(self):
-        if self.leaf:
-            return self.depth;
-        return max(self.lower_branch.max_depth(), self.upper_branch.max_depth())
+    Arguments
+    ---------
+    trained_tree:
+        The tree to draw
+    """
+    trained_tree.draw()
