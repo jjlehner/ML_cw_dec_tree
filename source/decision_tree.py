@@ -303,3 +303,8 @@ class DecisionTreeClassifierNode:
         pyplot.axis('equal')
         pyplot.axis('off')
         pyplot.show()
+
+    def max_depth(self):
+        if self.leaf:
+            return self.depth;
+        return max(self.lower_branch.max_depth(), self.upper_branch.max_depth())

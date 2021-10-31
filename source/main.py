@@ -125,6 +125,7 @@ def decision_tree_learning(dataset: np.ndarray, pruning: bool = False, verbose: 
     
     best_tree = None
     best_accuracy = 0.0
+    average_depth = 0
 
     # train and test each set of folds on the dataset
     for i in range(0, nb_of_folds):
@@ -140,6 +141,7 @@ def decision_tree_learning(dataset: np.ndarray, pruning: bool = False, verbose: 
             best_tree = tree
         if verbose: print(f' - Accuracy of fold {i} = {accuracy}')
         global_accuracy += accuracy / nb_of_folds
+        average_depth += tree.max_depth() / nb_of_folds
 
     # compute the global metrics
     confusion_average = np.trace(global_confusion_matrix) / np.sum(global_confusion_matrix)
@@ -160,7 +162,7 @@ def decision_tree_learning(dataset: np.ndarray, pruning: bool = False, verbose: 
         # F1 = 2 x precision x recall / (precision + recall)
         f1.append((2 * precision[i] * recall[i]) / (precision[i] + recall[i]))
         if verbose: print(f" -> Room {i+1}: Precision = {precision[i]}, Recall = {recall[i]}, F1 = {f1[i]}")
-    
+    if verbose: print(f"Average Depth of tree: {average_depth}")
     return best_tree
 
 if __name__ == '__main__':
@@ -174,12 +176,14 @@ if __name__ == '__main__':
     print("\n\nStep 3 - Results with noisy data:\n")
     tree = decision_tree_learning(noisy_data, verbose=True)
     tree.draw()
+    print(tree.evaluate(clean_data))
 
     print("\nStep 4 - Pruning results with clean data:")
     decision_tree_learning(clean_data, pruning=True, verbose=True)
     print("\n\nStep 4 - Pruning results with noisy data:")
     pruned_tree = decision_tree_learning(noisy_data, pruning=True, verbose=True)
     pruned_tree.draw()
+    print(pruned_tree.evaluate(clean_data))
     
     
 
