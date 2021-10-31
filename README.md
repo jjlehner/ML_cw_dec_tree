@@ -73,7 +73,7 @@ The resulting tree of the learning process can be printed out using the `draw` f
 And this will output a similar image as the one below:
 
 <p align="center">
-    <img src="documentation/images/clean-tree.png" alt="Hot plate">
+    <img src="documentation/images/clean-tree.png" alt="draw function output example">
 </p>
 
 ### Testing the tree
