@@ -38,11 +38,13 @@ If you decide to create a new seperate script, simply import the library with th
 
 ### Loading training and testing databases
 
-Any dataset can be loaded into the script as a `numpy.ndarray` using 
+Any dataset can be loaded into the script as a `numpy.ndarray` using the `load_dataset` function as follows:
 
 ```python
     my_dataset = load_dataset('path_to_dataset_file')
 ```
+
+This function accepts both absolute paths or relative paths from the directory where the script is being run.
 
 ### Learning process
 
