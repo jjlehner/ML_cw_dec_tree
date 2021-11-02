@@ -40,7 +40,7 @@ class DecisionTreeClassifierNode:
         # Otherwise, split the data set and create two sub-branches
         else:
             self.split_value, self.column = self.find_split(dataset)
-            self.label = f'x{self.column} : < {self.split_value} ≤'
+            self.label = f'< {self.split_value} ≤'
 
             lower_dataset = dataset[dataset[:, self.column] < self.split_value]
             upper_dataset = dataset[dataset[:, self.column] > self.split_value]
@@ -49,7 +49,7 @@ class DecisionTreeClassifierNode:
 
             self.width += self.lower_branch.width
             self.width += self.upper_branch.width
-    
+
     def evaluate(self, test_db) -> float:
         """ Evaluates a tree
 
@@ -63,11 +63,11 @@ class DecisionTreeClassifierNode:
         accuracy: float
             the accuracy of the tree with the test_db testing set
         """
-        
+
         return np.mean(np.equal(self.predict(test_db[:,:-1]),test_db[:, -1]))
-        
+
     def prune(self, validation: np.ndarray, root: 'DecisionTreeClassifierNode'):
-        """ Reduce overfitting across the tree to increase generalyse to unknown data. 
+        """ Reduce overfitting across the tree to increase generalyse to unknown data.
                 Change the state of the tree by removing/pruning nodes that decrease the accuracy of the Decision Tree
 
         Arguments
@@ -78,13 +78,13 @@ class DecisionTreeClassifierNode:
         root: DecisionTreeClassifierNode
             The root node of the tree on which to apply the pruning
         """
-        
+
         if self.leaf:
             return
         else:
             self.lower_branch.prune(validation, root)
             self.upper_branch.prune(validation, root)
-        
+
         if self.lower_branch.leaf and self.upper_branch.leaf:
             validation_accuracy_before = root.evaluate(validation)
             self.label = self.lower_branch.label if self.lower_branch.elements_under_leaf > self.upper_branch.elements_under_leaf else self.upper_branch.label
@@ -249,7 +249,7 @@ class DecisionTreeClassifierNode:
         for row, col in zip(actual,predictions):
             confusion_matrix[int(row)-1,int(col)-1] += 1
         return confusion_matrix
-        
+
     def draw_segments(self,
             axes: matplotlib.axes,
             origin: typing.List) -> typing.List:
