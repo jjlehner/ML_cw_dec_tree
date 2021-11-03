@@ -56,7 +56,7 @@ class DecisionTreeClassifierNode:
         # Otherwise, split the data set and create two sub-branches
         else:
             self.split_value, self.column = self.find_split(dataset)
-            self.graphics.label = f'< {int(self.split_value)} ≤'
+            self.graphics.label = f' x{self.column} : < {int(self.split_value)} ≤'
 
             lower_dataset = dataset[dataset[:, self.column] < self.split_value]
             upper_dataset = dataset[dataset[:, self.column] > self.split_value]
