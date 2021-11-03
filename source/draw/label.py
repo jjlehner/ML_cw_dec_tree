@@ -8,7 +8,7 @@ from matplotlib.path import Path
 from matplotlib import patches
 
 # Height of all labels rendered, in points
-_height = 1.5
+_height = 0.5
 
 
 def label(axes: matplotlib.axes,
@@ -47,7 +47,7 @@ def label(axes: matplotlib.axes,
     # Calculate the text's scale and size
     # scale = numpy.subtract(top_right, bottom_left)
     # size = [_height / numpy.prod(scale), _height]
-    size = [0, 1.5]
+    size = [0, _height]
     scale = [0, 0]
     scale[0] = (top_right[0] - bottom_left[0])
     scale[1] = (top_right[1] - bottom_left[1])

@@ -27,5 +27,5 @@ def line(axes: matplotlib.axes,
     """
 
     vertices = numpy.array([source, target])
-    points = Polygon(vertices, color=[0, 0, 0], edgecolor=[0, 0, 0], lw=1)
+    points = Polygon(vertices, edgecolor=[0, 0, 0], lw=1)
     axes.add_patch(points)

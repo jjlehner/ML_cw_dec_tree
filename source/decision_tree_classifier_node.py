@@ -1,7 +1,7 @@
 import math
 import typing
 
-import numpy as np
+import numpy
 import sys
 
 import matplotlib
@@ -9,25 +9,40 @@ from matplotlib import pyplot
 
 import draw
 
+class Graphics:
+
+    def __init__(self):
+        self.label = ''
+
+        self.x = 0
+        self.y = 0
+
+        self.width = 0
+        self.height = 0
+
+        self.modifier = 0
+
 class DecisionTreeClassifierNode:
 
-    def __init__(self, dataset: np.ndarray, depth: int):
+    def __init__(self, dataset: numpy.ndarray, depth: int):
 
         # Initialize branches, label
         self.lower_branch = None
         self.upper_branch = None
+        self.parent = None
 
         # Initialize meta-information
         self.depth: int = depth
-        self.label = ''
         self.leaf = False
         self.split_value = 0
         self.column = 0
         self.width = 0
         self.elements_under_leaf = 0
 
+        self.graphics = Graphics()
+
         # Evaluate label and unique values in data set
-        label, unique_counts = np.unique(dataset[:, -1], return_counts=True)
+        label, unique_counts = numpy.unique(dataset[:, -1], return_counts=True)
         label_count = len(unique_counts)
 
         # If only one sample present, flag node as leaf
@@ -35,17 +50,22 @@ class DecisionTreeClassifierNode:
             self.leaf = True
             self.width = 10
             self.label = int(label[0])
+            self.graphics.label = f'{self.label}'
             self.elements_under_leaf = dataset.shape[0]
 
         # Otherwise, split the data set and create two sub-branches
         else:
             self.split_value, self.column = self.find_split(dataset)
-            self.label = f'< {self.split_value} ≤'
+            self.graphics.label = f'< {int(self.split_value)} ≤'
 
             lower_dataset = dataset[dataset[:, self.column] < self.split_value]
             upper_dataset = dataset[dataset[:, self.column] > self.split_value]
+
             self.lower_branch = DecisionTreeClassifierNode(lower_dataset, depth + 1)
             self.upper_branch = DecisionTreeClassifierNode(upper_dataset, depth + 1)
+
+            self.lower_branch.parent = self
+            self.upper_branch.parent = self
 
             self.width += self.lower_branch.width
             self.width += self.upper_branch.width
@@ -55,7 +75,7 @@ class DecisionTreeClassifierNode:
 
         Arguments
         ---------
-        test_db: np.ndarray
+        test_db: numpy.ndarray
             the dataset with which to evaluate the tree gainst
 
         Returns
@@ -64,15 +84,15 @@ class DecisionTreeClassifierNode:
             the accuracy of the tree with the test_db testing set
         """
 
-        return np.mean(np.equal(self.predict(test_db[:,:-1]),test_db[:, -1]))
+        return numpy.mean(numpy.equal(self.predict(test_db[:,:-1]),test_db[:, -1]))
 
-    def prune(self, validation: np.ndarray, root: 'DecisionTreeClassifierNode'):
+    def prune(self, validation: numpy.ndarray, root: 'DecisionTreeClassifierNode'):
         """ Reduce overfitting across the tree to increase generalyse to unknown data.
                 Change the state of the tree by removing/pruning nodes that decrease the accuracy of the Decision Tree
 
         Arguments
         ---------
-        validation: np.ndarray
+        validation: numpy.ndarray
             The dataset used to evaluate the change in accuracy after pruning a node
 
         root: DecisionTreeClassifierNode
@@ -99,18 +119,17 @@ class DecisionTreeClassifierNode:
                 self.upper_branch = None
                 self.split_value = None
 
-
-    def predict_row(self, dataset: np.ndarray) -> np.ndarray:
+    def predict_row(self, dataset: numpy.ndarray) -> numpy.ndarray:
         """ Predict the value of the first row in a dataset
 
         Arguments
         ---------
-        dataset: np.ndarray
+        dataset: numpy.ndarray
 
 
         Returns
         -------
-        row_prediction: np.ndarray
+        row_prediction: numpy.ndarray
             the predicted row value
         """
 
@@ -122,27 +141,27 @@ class DecisionTreeClassifierNode:
 
         return branch.predict_row(dataset)
 
-    def predict(self, dataset: np.ndarray) -> np.ndarray:
+    def predict(self, dataset: numpy.ndarray) -> numpy.ndarray:
         """ Predict the result for each row in a dataset
 
         Arguments
         ---------
-        dataset: np.ndarray
+        dataset: numpy.ndarray
             dataset, the rows of which to predict
 
         Returns
         -------
-        predictions: np.ndarray
+        predictions: numpy.ndarray
             list of predictions for each row of the associated test dataset
         """
-        return np.squeeze(np.array([self.predict_row(row_index) for row_index in dataset]))
+        return numpy.squeeze(numpy.array([self.predict_row(row_index) for row_index in dataset]))
 
     def compute_entropy(self, dataset) -> float:
         """ Evaluate the entropy of a dataset
 
         Arguments
         ---------
-        dataset: np.ndarray
+        dataset: numpy.ndarray
             dataset, the entropy of which to calculate
 
         Returns
@@ -152,12 +171,12 @@ class DecisionTreeClassifierNode:
         """
 
         # Extract a subarray of unique elements in the dataset
-        _, unique_elements = np.unique(dataset[:, -1], return_counts=True)
+        _, unique_elements = numpy.unique(dataset[:, -1], return_counts=True)
 
         # Perform
         running_sum = 0
         for element in unique_elements:
-            unique_value = float(np.sum(unique_elements))
+            unique_value = float(numpy.sum(unique_elements))
             element_value = float(element)
 
             fraction = element_value / unique_value
@@ -165,12 +184,12 @@ class DecisionTreeClassifierNode:
 
         return running_sum
 
-    def find_split(self, dataset: np.ndarray) -> typing.Tuple[float, int]:
+    def find_split(self, dataset: numpy.ndarray) -> typing.Tuple[float, int]:
         """ Finds the ideal split value in a dataset
 
         Arguments
         ---------
-        dataset: np.ndarray
+        dataset: numpy.ndarray
             dataset of which to calculate the best split
 
         Returns
@@ -189,7 +208,7 @@ class DecisionTreeClassifierNode:
         for column_index in range(0, column_count - 1):
 
             # Sort the data set, and extract the column
-            sorted_dataset = dataset[np.argsort(dataset[:, column_index])]
+            sorted_dataset = dataset[numpy.argsort(dataset[:, column_index])]
             column = sorted_dataset[:, column_index]
 
             # Iterate over each row in the column
@@ -229,20 +248,20 @@ class DecisionTreeClassifierNode:
         # Return the best split, column values
         return (best_split, best_column)
 
-    def generate_confusion_matrix(self, test_set) -> np.ndarray:
+    def generate_confusion_matrix(self, test_set) -> numpy.ndarray:
         """ Generates a confusion matrix
 
         Arguments
         ---------
-        test_set: np.ndarray
+        test_set: numpy.ndarray
             the test set used to generate the confusion matrix
 
         Returns
         -------
-        confusion_matrix: np.array
+        confusion_matrix: numpy.array
             numpy array of size (test_set.shape[0],test_set.shape[0])
         """
-        confusion_matrix = np.zeros((4,4))
+        confusion_matrix = numpy.zeros((4,4))
         predictions = self.predict(test_set[:, :-1])
         actual = test_set[:, -1]
         assert len(actual) == len(predictions)
@@ -250,54 +269,104 @@ class DecisionTreeClassifierNode:
             confusion_matrix[int(row)-1,int(col)-1] += 1
         return confusion_matrix
 
-    def draw_segments(self,
-            axes: matplotlib.axes,
-            origin: typing.List) -> typing.List:
+    def calculate_positions(self, y: int = 0):
 
-        """ Evaluate segments of a node and its children
+        # Depth-first calculate childrens' positions
+        if not self.leaf:
+            self.lower_branch.calculate_positions(y - 1)
+            self.upper_branch.calculate_positions(y - 1)
 
-        Arguments
-        ---------
-        origin: typing.List
-            the origin of the node
+        # Update {x, y} positions
+        self.graphics.y = y
+        if self.parent and self != self.parent.lower_branch:
+            self.graphics.x = self.parent.lower_branch.graphics.x + 1
+        else:
+            self.graphics.x = 0
 
-        Returns
-        -------
-        segments: List
-            the line segments comprising the node and its children
+        # Preclude overlaps
+        if not self.leaf:
+            left_contour = {}
+            right_contour = {}
+
+            self.upper_branch.get_contour('left', left_contour)
+            self.lower_branch.get_contour('right', right_contour)
+
+            largest_offset = 0
+            for depth in left_contour:
+                if depth not in right_contour:
+                    continue
+
+                left_index = left_contour[depth]
+                right_index = right_contour[depth]
+
+                if right_index >= left_index:
+                    offset = right_index - left_index
+                    largest_offset = max(largest_offset, offset + 1)
+            self.upper_branch.graphics.x += largest_offset
+            self.upper_branch.graphics.modifier += largest_offset
+
+        # Centre over children
+        if not self.leaf:
+
+            lower_x = self.lower_branch.graphics.x
+            upper_x = self.upper_branch.graphics.x
+            average = (lower_x + upper_x) / 2
+
+            if self.parent and self != self.parent.lower_branch:
+                self.graphics.modifier = self.graphics.x - average
+            else:
+                self.graphics.x = average
+
+    def get_contour(self, sign: str, contour: typing.Dict, modifier_sum: int = 0):
+        """
         """
 
+        # Calculate modifier-offset (non-local) position
+        offset = self.graphics.x + modifier_sum
+
+        # Update contour map, either for the left or right, depending on sign
+        if self.graphics.y not in contour:
+            contour[self.graphics.y] = offset
+        else:
+            present_contour = contour[self.graphics.y]
+            if sign == 'left':
+                contour[self.graphics.y] = min(present_contour, offset)
+            elif sign == 'right':
+                contour[self.graphics.y] = max(present_contour, offset)
+
+        # Add children to contour map
+        modifier_sum += self.graphics.modifier
         if not self.leaf:
-            lower_width = self.lower_branch.width
-            upper_width = self.upper_branch.width
+            self.lower_branch.get_contour(sign, contour, modifier_sum)
+            self.upper_branch.get_contour(sign, contour, modifier_sum)
 
-            lower_origin = origin.copy()
-            lower_origin[0] += (lower_width - self.width) / 2
-            lower_origin[1] -= 10
+    def draw_segments(self, axes, modifier_sum: int = 0):
+        self.graphics.x += modifier_sum
+        modifier_sum += self.graphics.modifier
 
-            upper_origin = origin.copy()
-            upper_origin[0] += (self.width - upper_width) / 2
-            upper_origin[1] -= 10
+        self.graphics.x *= 5
+        self.graphics.y *= 7.5
 
-            lower_root = np.add(lower_origin, [0, 10])
-            upper_root = np.add(upper_origin, [0, 10])
+        origin = [self.graphics.x, self.graphics.y]
+        if not self.leaf:
+            self.lower_branch.draw_segments(axes, modifier_sum)
+            self.upper_branch.draw_segments(axes, modifier_sum)
 
-            draw.line(axes, lower_root, upper_root)
-            draw.line(axes, lower_origin, lower_root)
-            draw.line(axes, upper_origin, upper_root)
+            draw.line(axes, origin, [self.lower_branch.graphics.x, self.lower_branch.graphics.y])
+            draw.line(axes, origin, [self.upper_branch.graphics.x, self.upper_branch.graphics.y])
 
-            self.lower_branch.draw_segments(axes, lower_origin)
-            self.upper_branch.draw_segments(axes, upper_origin)
+        label_size = draw.label(axes, origin, self.graphics.label)
+        draw.box(axes, origin, numpy.add(label_size, [1.25, 1.25]))
 
-        label_size = draw.label(axes, origin, f'{self.label}')
-        draw.box(axes, origin, np.add(label_size, [5, 5]))
 
     def draw(self):
         """ Plot a node and its children
         """
 
         figure, axes = pyplot.subplots()
-        self.draw_segments(axes, [0, 0])
+
+        self.calculate_positions()
+        self.draw_segments(axes)
 
         axes.autoscale_view(True, True, True)
         pyplot.axis('equal')
@@ -306,5 +375,5 @@ class DecisionTreeClassifierNode:
 
     def max_depth(self):
         if self.leaf:
-            return self.depth;
+            return self.depth
         return max(self.lower_branch.max_depth(), self.upper_branch.max_depth())
