@@ -1,6 +1,8 @@
 import typing
 
 import matplotlib
+import numpy
+from matplotlib.patches import Polygon
 
 
 def line(axes: matplotlib.axes,
@@ -24,6 +26,6 @@ def line(axes: matplotlib.axes,
         size of the line rendered
     """
 
-    axes.plot([source[0], target[0]], [source[1], target[1]],
-            color=[0, 0, 0],
-            linewidth=1)
+    vertices = numpy.array([source, target])
+    points = Polygon(vertices, edgecolor=[0, 0, 0], lw=1)
+    axes.add_patch(points)
