@@ -9,16 +9,12 @@ if __name__ == '__main__':
     print("\n\nStep 3 - Results with clean data:\n")
     decision_tree_learning(clean_data, verbose=True)
     print("\n\nStep 3 - Results with noisy data:\n")
-    tree = decision_tree_learning(noisy_data, verbose=True)
-    tree.draw()
-    print(tree.evaluate(clean_data))
+    decision_tree_learning(noisy_data, verbose=True)
 
     print("\nStep 4 - Pruning results with clean data:")
     decision_tree_learning(clean_data, pruning=True, verbose=True)
     print("\n\nStep 4 - Pruning results with noisy data:")
-    pruned_tree = decision_tree_learning(noisy_data, pruning=True, verbose=True)
-    pruned_tree.draw()
-    print(pruned_tree.evaluate(clean_data))
+    decision_tree_learning(noisy_data, pruning=True, verbose=True)
     
     
 
