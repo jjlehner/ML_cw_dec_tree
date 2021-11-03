@@ -13,7 +13,8 @@ _height = 0.5
 
 def label(axes: matplotlib.axes,
         origin: typing.Tuple[int, int],
-        text: str) -> typing.Tuple[int, int]:
+        text: str,
+        colour: typing.List = [1, 1, 1]) -> typing.Tuple[int, int]:
 
     """ Draw a label
 
@@ -70,7 +71,7 @@ def label(axes: matplotlib.axes,
 
     # Create a patch from the vertex points
     path = Path(numpy.array(vertices), path.codes)
-    patch = patches.PathPatch(path, color=[1, 1, 1], lw=0, zorder=10)
+    patch = patches.PathPatch(path, color=colour, lw=0, zorder=10)
     axes.add_patch(patch)
 
     return size

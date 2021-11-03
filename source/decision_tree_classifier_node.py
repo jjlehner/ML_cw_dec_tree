@@ -355,9 +355,18 @@ class DecisionTreeClassifierNode:
             draw.line(axes, origin, [self.lower_branch.graphics.x, self.lower_branch.graphics.y])
             draw.line(axes, origin, [self.upper_branch.graphics.x, self.upper_branch.graphics.y])
 
-        label_size = draw.label(axes, origin, self.graphics.label)
-        draw.box(axes, origin, numpy.add(label_size, [1.25, 1.25]))
+        column_colours = [
+            [0.5725, 0.9647, 0.6274],
+            [0.7529, 1.0000, 0.8705],
+            [0.9058, 0.7568, 0.0000],
+            [1.0000, 0.5176, 0.4784],
+            [1.0000, 0.7176, 0.8196],
+            [1.0000, 0.9333, 0.3137],
+            [1.0000, 1.0000, 1.0000]
+        ]
 
+        label_size = draw.label(axes, origin, self.graphics.label, colour=column_colours[self.column])
+        draw.box(axes, origin, numpy.add(label_size, [1.25, 1.25]))
 
     def draw(self):
         """ Plot a node and its children
@@ -372,6 +381,7 @@ class DecisionTreeClassifierNode:
         pyplot.axis('equal')
         pyplot.axis('off')
         pyplot.show()
+        pyplot.savefig('tree.svg')
 
     def max_depth(self):
         if self.leaf:

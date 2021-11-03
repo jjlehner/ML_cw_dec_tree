@@ -7,7 +7,8 @@ from matplotlib.patches import Polygon
 
 def line(axes: matplotlib.axes,
         source: typing.Tuple[int, int],
-        target: typing.Tuple[int, int]) -> typing.Tuple[int, int]:
+        target: typing.Tuple[int, int],
+        colour: typing.List = [0, 0, 0]) -> typing.Tuple[int, int]:
 
     """ Draw a line
 
@@ -27,5 +28,5 @@ def line(axes: matplotlib.axes,
     """
 
     vertices = numpy.array([source, target])
-    points = Polygon(vertices, edgecolor=[0, 0, 0], lw=1)
+    points = Polygon(vertices, edgecolor=colour, lw=1)
     axes.add_patch(points)

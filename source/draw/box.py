@@ -8,7 +8,8 @@ from matplotlib import patches
 
 def box(axes: matplotlib.axes,
         origin: typing.Tuple[int, int],
-        size: typing.Tuple[int, int]) -> typing.Tuple[int, int]:
+        size: typing.Tuple[int, int],
+        colour: typing.List =[0, 0, 0]) -> typing.Tuple[int, int]:
 
     """ Draw a box
 
@@ -36,7 +37,7 @@ def box(axes: matplotlib.axes,
             size[0],
             size[1],
             fill=True,
-            color=[0, 0, 0])
+            color=colour)
     axes.add_patch(box)
 
     return size
